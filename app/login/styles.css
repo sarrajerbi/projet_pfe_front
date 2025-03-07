@@ -1,0 +1,71 @@
+/* pages/login/styles.css */
+
+/* Login page */
+.login-page {
+    min-height: 100vh;
+    background: linear-gradient(to right, #3b82f6, #4f46e5, #7e22ce);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .login-page .form-container {
+    background-color: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    width: 24rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+  
+  .login-page h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    text-align: center;
+    color: #333;
+    margin-bottom: 1.5rem;
+  }
+  
+  .login-page .input-field {
+    margin-bottom: 1.5rem;
+  }
+  
+  .login-page .input-field label {
+    display: block;
+    font-weight: 500;
+    color: #555;
+  }
+  
+  .login-page .input-field input {
+    width: 100%;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .login-page .button {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background-color: #4f46e5;
+    color: white;
+    font-weight: bold;
+    transition: background 0.3s ease;
+  }
+  
+  .login-page .button:hover {
+    background-color: #4338ca;
+  }
+  
+  .login-page .footer {
+    text-align: center;
+    margin-top: 1rem;
+  }
+  
+  .login-page .footer a {
+    color: #4f46e5;
+    text-decoration: underline;
+    font-weight: 600;
+  }
+  
