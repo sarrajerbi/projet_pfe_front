@@ -1,14 +1,15 @@
 "use client"; // Ensure this file is treated as a client component
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import "../profile/styles.css"; // Import the CSS file here
 
 const ProfilePage = () => {
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const router = useRouter();
 
   // Fetch the user data with authentication token
   const fetchProfileData = async () => {
@@ -16,7 +17,6 @@ const ProfilePage = () => {
       const token = localStorage.getItem("token");
       if (!token) {
         setError("User not authenticated");
-        setLoading(false);
         return;
       }
 
@@ -28,44 +28,20 @@ const ProfilePage = () => {
 
       console.log("User data:", response.data);
       setUser(response.data);
-      setLoading(false);
     } catch (error) {
       console.error("Error loading profile data:", error);
       setError("Failed to load profile data.");
-      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchProfileData(); // Call the function inside useEffect when the component mounts
+    fetchProfileData(); // Fetch data once component mounts
   }, []); // Empty dependency array means it will run only once
 
-  // Handle adding to favoris
-  const handleFavoris = () => {
-    axios
-      .post("http://localhost:8000/api/profile/favoris", { favoris: "some_favoris" }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`, // Add token to headers
-        },
-      })
-      .then(() => alert("Added to favoris"))
-      .catch(() => alert("Error adding favoris"));
-  };
+  if (error) return <div className="error">{error}</div>; // Handle error state gracefully
 
-  // Handle adding points
-  const handlePoints = () => {
-    axios
-      .post("http://localhost:8000/api/profile/points", { points: 10 }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`, // Add token to headers
-        },
-      })
-      .then(() => alert("Points added"))
-      .catch(() => alert("Error adding points"));
-  };
-
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div className="error">{error}</div>;
+  // If user data is null, render a placeholder
+  if (!user) return null; // Optionally, render nothing or a placeholder here
 
   return (
     <div className="profile-container">
@@ -96,10 +72,10 @@ const ProfilePage = () => {
             <h1>{user?.name}</h1>
             <p className="email">{user?.email}</p>
             <div className="buttons">
-              <button onClick={handleFavoris} className="action-button">
+              <button onClick={() => {}} className="action-button">
                 Favoris
               </button>
-              <button onClick={handlePoints} className="action-button">
+              <button onClick={() => {}} className="action-button">
                 Mes Points
               </button>
             </div>
@@ -119,9 +95,14 @@ const ProfilePage = () => {
           <Link href="/delete-account" className="profile-link danger">
             Supprimer mon compte
           </Link>
-          <Link href="/logout" className="profile-link">
-            Déconnexion
-          </Link>
+          {/* Move the Deconnexion button below the other links */}
+          <button onClick={() => {
+            localStorage.removeItem("token");
+            localStorage.removeItem("role");
+            router.push("/login"); // Redirect to login page
+          }} className="profile-link danger logout-btn">
+            Deconnexion
+          </button>
         </div>
       </div>
     </div>

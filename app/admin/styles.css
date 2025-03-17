@@ -1,0 +1,48 @@
+/* styles.css */
+.home {
+    display: flex;
+    height: 100vh; /* Ensure the full viewport height */
+  }
+  
+  .sidebar {
+    width: 250px;
+    background-color: #333;
+    color: white;
+    padding: 20px;
+    min-height: 100vh; /* Make sure sidebar extends to full height */
+  }
+  
+  .sidebar h2 {
+    color: #fff;
+    text-align: center;
+  }
+  
+  .sidebar ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .sidebar ul li {
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+  
+  .sidebar ul li:hover {
+    background-color: #444;
+  }
+  
+  .content {
+    flex-grow: 1; /* Make content take the remaining space */
+    padding: 20px;
+    background-color: #f4f4f4;
+    min-height: 100vh; /* Ensure full height to prevent black section */
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center the content */
+  }
+  
+  .content h1 {
+    font-size: 24px;
+    color: #333;
+  }
+  
