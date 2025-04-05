@@ -1,195 +1,178 @@
 "use client";
-
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import axios from "axios";
-import "../admin_profile/styles.css"; // Assurez-vous que le chemin est correct
+import { useRouter } from "next/navigation";
+import "./styles.css";
 
-export default function AdminProfile() {
-  const [photo, setPhoto] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [lname, setLname] = useState(""); // Utilisation de lname au lieu de lastName
-  const [email, setEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+interface FormData {
+  name: string;
+  lname: string;
+  email: string;
+  new_password: string;
+  confirmPassword: string;
+  photo: string; // still needed for displaying the profile image, but not sent in update
+}
+
+const admin_profile = () => {
+  const [user, setUser] = useState<any>(null);
+  const [error, setError] = useState<string>("");
+  const [successMessage, setSuccessMessage] = useState<string>("");
+
+  const [formData, setFormData] = useState<FormData>({
+    name: "",
+    lname: "",
+    email: "",
+    photo: "",
+    new_password: "",
+    confirmPassword: "",
+  });
+
   const router = useRouter();
 
-  useEffect(() => {
-    // Récupérer les données du profil actuel depuis le backend
-    const fetchProfile = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          console.error("Aucun token trouvé");
-          return;
-        }
-
-        const response = await axios.get("http://localhost:8000/api/admin/profile", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        // Vérification si la photo est null et utilisation d'une photo par défaut si c'est le cas
-        setName(response.data.user.name);
-        setLname(response.data.user.lname); // Utilisation de lname
-        setEmail(response.data.user.email);
-        setPhoto(response.data.user.photo ? response.data.user.photo : "/default-avatar.png");
-      } catch (error: unknown) {
-        console.error("Erreur lors de la récupération du profil :", error);
-        setError("Échec du chargement du profil");
+  const fetchUserData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("User not authenticated");
+        return;
       }
-    };
+  
+      const response = await axios.get("http://localhost:8000/api/admin/profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+  
+      const user = response.data.user;
+  
+      setUser(user);
+      setFormData({
+        name: user.name || "",
+        lname: user.lname || "",
+        email: user.email || "",
+        photo: user.photo || "",
+        new_password: "",
+        confirmPassword: "",
+      });
+    } catch (err) {
+      console.error("Error fetching user:", err);
+      setError("Failed to fetch user data.");
+    }
+  };
+  
 
-    fetchProfile();
+  useEffect(() => {
+    fetchUserData();
   }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+  
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("User not authenticated");
+        return;
+      }
+  
+      const imageData = new FormData();
+      imageData.append("photo", file);
+  
+      const response = await axios.put("http://localhost:8000/api/admin/profile", imageData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+  
+      // Update the photo URL in formData state
+      setFormData((prev) => ({ ...prev, photo: response.data.user.photo }));
+      setSuccessMessage("Photo mise à jour !");
+    } catch (error) {
+      console.error("Error uploading photo:", error);
+      setError("Échec de la mise à jour de la photo.");
+    }
+  };
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation de la confirmation du mot de passe
-    if (newPassword !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas");
+    if (formData.new_password !== formData.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
       return;
     }
-
-    // Vérification que le champ name est non vide avant l'envoi
-    if (!name.trim()) {
-      setError("Le champ nom est requis");
-      return;
-    }
-
-    // Vérification que l'email est valide
-    if (!email.trim()) {
-      setError("Le champ email est requis");
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Veuillez entrer un email valide");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("lname", lname); // Utilisation de lname
-    formData.append("email", email); // Assurez-vous que l'email est bien envoyé
-    formData.append("new_password", newPassword);
-    formData.append("new_password_confirmation", confirmPassword);
-
-    // Ajouter le fichier photo si il existe
-    const photoInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    if (photoInput && photoInput.files?.[0]) {
-      formData.append("photo", photoInput.files[0]);
-    }
-
-    // Afficher les données envoyées dans la console pour déboguer
-    console.log("Form Data:", formData);
 
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.put("http://localhost:8000/api/admin/profile", formData, {
+      if (!token) {
+        setError("User not authenticated");
+        return;
+      }
+
+      const payload = {
+        name: formData.name,
+        lname: formData.lname,
+        email: formData.email,
+        new_password: formData.new_password,
+        new_password_confirmation: formData.confirmPassword,
+      };
+
+      await axios.put("http://localhost:8000/api/admin/profile", payload, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data", // Make sure this is set
         },
       });
 
-      // Mettez à jour l'état avec les données mises à jour
-      setName(response.data.user.name);
-      setLname(response.data.user.lname);
-      setEmail(response.data.user.email);
-      setPhoto(response.data.user.photo || "/default-avatar.png");
-      setMessage("Profil mis à jour avec succès");
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        setError(error.response?.data.message || "Échec de la mise à jour du profil");
-        console.error("Backend Error: ", error.response?.data);
-      } else {
-        setError("Échec de la mise à jour du profil");
-        console.error("Unknown error: ", error);
-      }
+      setSuccessMessage("Profil mis à jour !");
+      router.push("/admin_profile");
+    } catch (error: any) {
+      console.error("Update error:", error);
+      setError(error.response?.data?.message || "Erreur lors de la mise à jour.");
     }
   };
 
-  const handleCancel = () => {
-    router.push("/admin/dashboard");
-  };
+  if (error) return <div className="error">{error}</div>;
+  if (!user) return null;
 
   return (
     <div className="edit-profile-container">
       <div className="edit-profile-card">
-        <h2>Profil Administrateur</h2>
-        <form onSubmit={handleSubmit} className="edit-profile-form">
-          <div className="profile-photo">
+        <h2>Profil</h2>
+        {successMessage && <div className="success-message">{successMessage}</div>}
+
+        <div className="profile-photo-wrapper">
+          <input type="file" accept="image/*" id="photoUpload" style={{ display: "none" }} onChange={handlePhotoChange} />
+          <label htmlFor="photoUpload" className="profile-photo-label">
             <img
-              src={photo || "/default-avatar.png"} // Utilisation de photo par défaut si vide
-              alt="Photo de Profil"
+              src={formData.photo || "/default-profile.png"}
+              alt="Profile"
               className="profile-image"
             />
-            <input
-              type="file"
-              accept="image/*"
-              className="file-input"
-            />
-          </div>
+          </label>
+        </div>
 
-          <div className="form-group">
-            <label>Nom</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="edit-profile-form">
+          <div className="form-group"><label>Nom</label><input name="name" value={formData.name} onChange={handleInputChange} /></div>
+          <div className="form-group"><label>Prénom</label><input name="lname" value={formData.lname} onChange={handleInputChange} /></div>
+          <div className="form-group"><label>Email</label><input type="email" name="email" value={formData.email} onChange={handleInputChange} /></div>
+          <div className="form-group"><label>New Password</label><input type="password" name="new_password" value={formData.new_password} onChange={handleInputChange} /></div>
+          <div className="form-group"><label>Confirm Password</label><input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} /></div>
 
-          <div className="form-group">
-            <label>Prénom</label>
-            <input
-              type="text"
-              value={lname} // Utilisation de lname
-              onChange={(e) => setLname(e.target.value)} // Modification de lname
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Email</label>
-            <input 
-              type="email" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} // Ajout de l'event handler pour l'email
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Mot de passe</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Confirmer le mot de passe</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
-          </div>
-
-          {error && <p className="error">{error}</p>}
-          {message && <p className="message">{message}</p>}
-
-          <div>
-            <button type="submit" className="update-button">Modifier</button>
-            <button type="button" onClick={handleCancel} className="back-button">Annuler</button>
-          </div>
+          <button type="submit" className="update-button">Modifier</button>
+          <button type="button" className="back-button" onClick={() => router.push("/admin_profile")}>Annuler</button>
         </form>
       </div>
     </div>
   );
-}
+};
+
+export default admin_profile;

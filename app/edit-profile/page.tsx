@@ -1,67 +1,125 @@
-"use client"; // Ensure this file is treated as a client component
-
+"use client";
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { useRouter } from "next/navigation"; // Use next/navigation for routing in Next.js 13+
-import "./styles.css"; // Ensure the correct CSS file path
+import { useRouter } from "next/navigation";
+import "./styles.css";
+
+interface FormData {
+  name: string;
+  lname: string;
+  email: string;
+  photo: string;
+  dob: string;
+  telephone: string;
+  genre: string;
+  gouvernorat: string;
+  ville: string;
+  password: string;
+  confirmPassword: string;
+}
 
 const EditProfilePage = () => {
   const [user, setUser] = useState<any>(null);
-  const [error, setError] = useState("");
-  const [formData, setFormData] = useState<any>({
+  const [error, setError] = useState<string>("");
+  const [successMessage, setSuccessMessage] = useState<string>("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null); // Store the selected file temporarily
+  const [isPhotoChanged, setIsPhotoChanged] = useState(false); // To track if the photo was changed
+
+  const [formData, setFormData] = useState<FormData>({
     name: "",
-    lname: "", // Add last name
+    lname: "",
     email: "",
     photo: "",
-    dob: "", // Date of birth
-    telephone: "", // Telephone
-    genre: "", // Genre (Homme ou Femme)
-    gouvernorat: "", // Gouvernorat
-    ville: "", // Ville
+    dob: "",
+    telephone: "",
+    genre: "",
+    gouvernorat: "",
+    ville: "",
+    password: "",
+    confirmPassword: "",
   });
-
-  const [cities, setCities] = useState<string[]>([]); // Cities based on Gouvernorat selection
 
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setError("User not authenticated");
-          return;
-        }
+  const gouvernoratsVilles: { [key: string]: string[] } = {
+    "Tunis": ["Tunis", "La Marsa", "Carthage", "Le Bardo"],
+    "Ariana": ["Ariana", "Menzeh"],
+    "Sfax": ["Sfax", "Kerkennah", "Skhira", "Mahares"],
+    "Sousse": ["Sousse", "Hergla", "Khezama", "Sidi Bou Ali"],
+    "Nabeul": ["Nabeul", "Hammamet", "Kelibia", "Menzel Bouzelfa"],
+    "Kairouan": ["Kairouan", "El Alâa", "Sidi Salah", "Haffouz"],
+    "Gabès": ["Gabès", "Matmata"],
+    "Médenine": ["Médenine", "Zarzis"],
+    "Tozeur": ["Tozeur", "Nefta", "Tamerza"],
+    "Bizerte": ["Bizerte", "Menzel Bourguiba", "Rafraf", "Mateur"],
+    "Mahdia": ["Mahdia", "El Jem", "Chebba", "Cousa"],
+  };
 
-        const response = await axios.get("http://localhost:8000/api/user", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        setUser(response.data);
-        setFormData({
-          name: response.data.name || "",
-          lname: response.data.lname || "", // Last name
-          email: response.data.email || "",
-          photo: response.data.photo || "",
-          dob: response.data.dob || "", // Date of birth
-          telephone: response.data.telephone || "", // Telephone
-          genre: response.data.genre || "", // Genre
-          gouvernorat: response.data.gouvernorat || "", // Gouvernorat
-          ville: response.data.ville || "", // Ville
-        });
-      } catch (error) {
-        console.error("Error loading user data:", error);
-        setError("Failed to load user data.");
+  const fetchUserData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("User not authenticated");
+        return;
       }
-    };
 
+      const response = await axios.get("http://localhost:8000/api/user", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const user = response.data.user;
+
+      setUser(user);
+      setFormData({
+        name: user.name || "",
+        lname: user.lname || "",
+        email: user.email || "",
+        photo: user.photo || "",
+        dob: user.dob || "",
+        telephone: user.telephone || "",
+        genre: user.genre || "",
+        gouvernorat: user.gouvernorat || "",
+        ville: user.ville || "",
+        password: "",
+        confirmPassword: "",
+      });
+    } catch (err) {
+      console.error("Error fetching user:", err);
+      setError("Failed to fetch user data.");
+    }
+  };
+
+  useEffect(() => {
     fetchUserData();
   }, []);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === "gouvernorat" ? { ville: "" } : {}), // Reset ville when gouvernorat changes
+    }));
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Temporarily store the file and mark photo as changed
+    setPhotoFile(file);
+    setIsPhotoChanged(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
+      return;
+    }
 
     try {
       const token = localStorage.getItem("token");
@@ -70,123 +128,106 @@ const EditProfilePage = () => {
         return;
       }
 
-      await axios.patch(
-        "http://localhost:8000/api/user",
-        {
-          name: formData.name,
-          lname: formData.lname,
-          email: formData.email,
-          photo: formData.photo,
-          dob: formData.dob,
-          telephone: formData.telephone,
-          genre: formData.genre,
-          gouvernorat: formData.gouvernorat,
-          ville: formData.ville,
-        },
-        {
+      const payload: any = { ...formData };
+      delete payload.confirmPassword;
+
+      // If a new photo file is selected, upload it and update the photo URL
+      if (photoFile) {
+        const imageData = new FormData();
+        imageData.append("photo", photoFile);
+
+        const response = await axios.post("http://localhost:8000/api/upload-photo", imageData, {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
+            "Content-Type": "multipart/form-data",
           },
-        }
-      );
+        });
 
-      alert("Profile updated successfully!");
+        payload.photo = response.data.photoUrl;  // Add the photo URL to the payload
+      }
+
+      await axios.patch("http://localhost:8000/api/user", payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setSuccessMessage("Profil mis à jour !");
       router.push("/profile");
     } catch (error: any) {
-      console.error("Error updating profile:", error);
-      setError(error.response?.data?.message || "Failed to update profile.");
+      console.error("Update error:", error);
+      setError(error.response?.data?.message || "Erreur lors de la mise à jour.");
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-
-    if (e.target.name === "gouvernorat") {
-      // Update cities based on gouvernorat
-      setCities(getCitiesForGouvernorat(e.target.value));
+  const handleCancel = () => {
+    if (isPhotoChanged || Object.values(formData).some(value => value !== "")) {
+      const confirmDiscard = window.confirm("Voulez-vous vraiment annuler les modifications ?");
+      if (confirmDiscard) {
+        router.push("/profile"); // Navigate back to profile if confirmed
+      }
+    } else {
+      router.push("/profile"); // Navigate back if no changes were made
     }
-  };
-
-  // Example function to return cities based on gouvernorat (you should implement this with actual data)
-  const getCitiesForGouvernorat = (gouvernorat: string): string[] => {
-    const citiesMap: { [key: string]: string[] } = {
-      "Tunis": ["Tunis", "La Marsa", "Carthage"],
-      "Sfax": ["Sfax", "Kerkennah"],
-      // Add more governorates and cities here
-    };
-    return citiesMap[gouvernorat] || [];
   };
 
   if (error) return <div className="error">{error}</div>;
-
-  if (!user) return null; // Render nothing or a placeholder until user data is fetched
+  if (!user) return null;
 
   return (
     <div className="edit-profile-container">
       <div className="edit-profile-card">
-        <h2>Edit Profile</h2>
+        <h2>Modifier le profil</h2>
+        {successMessage && <div className="success-message">{successMessage}</div>}
 
-        {formData.photo && <img src={formData.photo} alt="Profile" className="profile-image" />}
+        <div className="profile-photo-wrapper">
+          <input type="file" accept="image/*" id="photoUpload" style={{ display: "none" }} onChange={handlePhotoChange} />
+          <label htmlFor="photoUpload" className="profile-photo-label">
+            <img
+              src={photoFile ? URL.createObjectURL(photoFile) : formData.photo || "/default-profile.png"}
+              alt="Profile"
+              className="profile-image"
+            />
+            <div className="edit-icon">✎</div>
+          </label>
+        </div>
 
         <form onSubmit={handleSubmit} className="edit-profile-form">
-          <div className="form-group">
-            <label htmlFor="name">Name</label>
-            <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="lname">Last Name</label>
-            <input type="text" id="lname" name="lname" value={formData.lname} onChange={handleInputChange} />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="dob">Date de Naissance</label>
-            <input type="date" id="dob" name="dob" value={formData.dob} onChange={handleInputChange} />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="telephone">Telephone</label>
-            <input type="text" id="telephone" name="telephone" value={formData.telephone} onChange={handleInputChange} />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="genre">Genre</label>
-            <select id="genre" name="genre" value={formData.genre} onChange={handleInputChange}>
+          <div className="form-group"><label>Nom</label><input name="name" value={formData.name} onChange={handleInputChange} /></div>
+          <div className="form-group"><label>Prénom</label><input name="lname" value={formData.lname} onChange={handleInputChange} /></div>
+          <div className="form-group"><label>Email</label><input type="email" name="email" value={formData.email} onChange={handleInputChange} /></div>
+          <div className="form-group"><label>Date de naissance</label><input type="date" name="dob" value={formData.dob} onChange={handleInputChange} /></div>
+          <div className="form-group"><label>Téléphone</label><input name="telephone" value={formData.telephone} onChange={handleInputChange} /></div>
+          <div className="form-group"><label>Genre</label>
+            <select name="genre" value={formData.genre} onChange={handleInputChange}>
               <option value="Homme">Homme</option>
               <option value="Femme">Femme</option>
             </select>
           </div>
 
+          {/* Gouvernorat and Ville dropdowns */}
           <div className="form-group">
-            <label htmlFor="gouvernorat">Gouvernorat</label>
-            <select id="gouvernorat" name="gouvernorat" value={formData.gouvernorat} onChange={handleInputChange}>
-              <option value="Tunis">Tunis</option>
-              <option value="Sfax">Sfax</option>
-              {/* Add other governorates here */}
+            <label>Gouvernorat</label>
+            <select name="gouvernorat" value={formData.gouvernorat} onChange={handleInputChange}>
+              <option value="">Sélectionnez un gouvernorat</option>
+              {Object.keys(gouvernoratsVilles).map((gouv, index) => (
+                <option key={index} value={gouv}>{gouv}</option>
+              ))}
             </select>
           </div>
 
           <div className="form-group">
-            <label htmlFor="ville">Ville</label>
-            <select id="ville" name="ville" value={formData.ville} onChange={handleInputChange}>
-              {cities.map((city, index) => (
-                <option key={index} value={city}>{city}</option>
+            <label>Ville</label>
+            <select name="ville" value={formData.ville} onChange={handleInputChange} disabled={!formData.gouvernorat}>
+              <option value="">Sélectionnez une ville</option>
+              {formData.gouvernorat && gouvernoratsVilles[formData.gouvernorat]?.map((ville, index) => (
+                <option key={index} value={ville}>{ville}</option>
               ))}
             </select>
           </div>
 
           <button type="submit" className="update-button">Modifier</button>
-          <button type="button" className="cancel-button" onClick={() => router.push("/profile")}>Annuler</button>
+          <button type="button" className="back-button" onClick={handleCancel}>Annuler</button>
         </form>
       </div>
     </div>

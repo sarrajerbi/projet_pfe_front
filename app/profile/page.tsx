@@ -27,7 +27,8 @@ const ProfilePage = () => {
       });
 
       console.log("User data:", response.data);
-      setUser(response.data);
+
+      setUser(response.data.user);
     } catch (error) {
       console.error("Error loading profile data:", error);
       setError("Failed to load profile data.");
@@ -42,6 +43,12 @@ const ProfilePage = () => {
 
   // If user data is null, render a placeholder
   if (!user) return null; // Optionally, render nothing or a placeholder here
+
+  // Fix URL construction for profile photo
+  const photoUrl =
+    user?.photo && user.photo.startsWith("http")
+      ? user.photo
+      : `${process.env.NEXT_PUBLIC_API_URL}/storage/${user?.photo}`;
 
   return (
     <div className="profile-container">
@@ -63,7 +70,8 @@ const ProfilePage = () => {
         <div className="profile-header">
           <div className="profile-photo-container">
             <img
-              src={user?.photo || "/default-avatar.png"} // Fallback to default avatar if no photo
+              // Fix the URL to make sure it points to the correct storage path
+              src={photoUrl || "/default-avatar.png"} // Use default if no photo
               alt="User Photo"
               className="profile-photo"
             />
@@ -96,11 +104,14 @@ const ProfilePage = () => {
             Supprimer mon compte
           </Link>
           {/* Move the Deconnexion button below the other links */}
-          <button onClick={() => {
-            localStorage.removeItem("token");
-            localStorage.removeItem("role");
-            router.push("/login"); // Redirect to login page
-          }} className="profile-link danger logout-btn">
+          <button
+            onClick={() => {
+              localStorage.removeItem("token");
+              localStorage.removeItem("role");
+              router.push("/login"); // Redirect to login page
+            }}
+            className="profile-link danger logout-btn"
+          >
             Deconnexion
           </button>
         </div>

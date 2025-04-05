@@ -106,13 +106,29 @@ body {
   font-weight: bold;
   margin-bottom: 15px;
 }
+.profile-photo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 15px;
+}
 
-/* Profile Image Preview */
 .profile-image {
-  width: 100px;
-  height: 100px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 15px;
-  border: 2px solid #ccc;
+  border: 3px solid #ddd;
+}
+
+.profile-photo-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #666;
 }
